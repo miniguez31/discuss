@@ -1480,14 +1480,12 @@ require.register("web/static/js/app.js", function(exports, require, module) {
 
 require("phoenix_html");
 
+require("./socket");
+
 });
 
 require.register("web/static/js/socket.js", function(exports, require, module) {
 "use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
 
 var _phoenix = require("phoenix");
 
@@ -1545,18 +1543,65 @@ var socket = new _phoenix.Socket("/socket", { params: { token: window.userToken 
 socket.connect();
 
 // Now that you are connected, you can join channels with a topic:
-var channel = socket.channel("topic:subtopic", {});
-channel.join().receive("ok", function (resp) {
-  console.log("Joined successfully", resp);
-}).receive("error", function (resp) {
-  console.log("Unable to join", resp);
+//let channel = socket.channel("comments:1", {})
+//channel.join()
+//  .receive("ok", resp => { console.log("Joined successfully", resp) })
+//  .receive("error", resp => { console.log("Unable to join", resp) })
+
+//document.querySelector('button').addEventListener('click', function() {
+//    channel.push('comment:hello', {hi: 'there!'});
+//});
+
+var createSocket = function createSocket(topicId) {
+    var channel = socket.channel("comments:" + topicId, {});
+    channel.join()
+    //.receive("ok", resp => { console.log("Joined successfully", resp) })
+    .receive("ok", function (resp) {
+        console.log(resp);
+        renderComments(resp.comments);
+    }).receive("error", function (resp) {
+        console.log("Unable to join", resp);
+    });
+
+    channel.on("comments:" + topicId + ":new", renderComment);
+
+    document.querySelector('button').addEventListener('click', function () {
+        var content = document.querySelector('textarea').value;
+
+        channel.push('comment:add', { content: content });
+    });
+};
+
+function renderComments(comments) {
+    var renderedComments = comments.map(function (comment) {
+        return commentTemplate(comment);
+    });
+
+    document.querySelector('.collection').innerHTML = renderedComments.join('');
+}
+
+function renderComment(event) {
+    var renderedComment = commentTemplate(event.comment);
+
+    document.querySelector('.collection').innerHTML += renderedComment;
+}
+
+function commentTemplate(comment) {
+    var email = 'Anonymous';
+
+    if (comment.user) {
+        email = comment.user.email;
+    }
+    return "\n<li class=\"collection-item\">\n" + comment.content + "\n<div class=\"secondary-content\">\n" + email + "\n</div>\n</li>\n";
+}
+
+window.createSocket = createSocket;
+
+//export default socket
+
 });
 
-exports.default = socket;
-
-});
-
-require.alias("phoenix/priv/static/phoenix.js", "phoenix");
+;require.alias("phoenix/priv/static/phoenix.js", "phoenix");
 require.alias("phoenix_html/priv/static/phoenix_html.js", "phoenix_html");require.register("___globals___", function(exports, require, module) {
   
 });})();require('___globals___');
